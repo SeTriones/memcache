@@ -21,6 +21,7 @@ var (
 	ErrCmd          = errors.New("Unkown commond")
 	ErrMem          = errors.New("Out of memery")
 	ErrUnkown       = errors.New("Unkown error")
+	ErrNoPlainAuth  = errors.New("No plain auth")
 )
 
 var (

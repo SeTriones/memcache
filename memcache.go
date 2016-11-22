@@ -2,6 +2,8 @@ package memcache
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"sync"
 	"time"
 )
@@ -391,6 +393,29 @@ func (this *Memcache) Version(server *Server) (v string, err error) { /*{{{*/
 
 	return v, err
 } /*}}}*/
+
+func (this *Memcache) Auth(user string, password string) (err error) {
+	for _, server := range this.nodes.Servers {
+		fmt.Fprintf(os.Stderr, "auth %s\n", server.Address)
+		for i := 0; i < badTryCnt; i++ {
+			conn, e := server.pool.Get()
+			if e != nil && e == ErrNotConn {
+				this.sendBadServerNotice()
+				return e
+			}
+
+			err = conn.auth(user, password)
+			if err == ErrBadConn {
+				server.pool.Release(conn)
+			} else {
+				server.pool.Put(conn)
+				break
+			}
+		}
+	}
+
+	return err
+}
 
 func (this *Memcache) sendBadServerNotice() { /*{{{*/
 	if this.manager.isRmBadServer == false {

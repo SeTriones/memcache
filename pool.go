@@ -16,7 +16,7 @@ type ConnectionPool struct {
 	sync.Mutex
 }
 
-func open(address string, maxCnt int, initCnt int, idelTime time.Duration) (pool *ConnectionPool) {
+func open(address string, user string, password string, maxCnt int, initCnt int, idelTime time.Duration) (pool *ConnectionPool) {
 	pool = &ConnectionPool{
 		pool:     make(chan *Connection, maxCnt),
 		address:  address,
@@ -26,6 +26,10 @@ func open(address string, maxCnt int, initCnt int, idelTime time.Duration) (pool
 
 	for i := 0; i < initCnt; i++ {
 		conn, err := connect(address)
+		if err != nil {
+			continue
+		}
+		err = conn.auth(user, password)
 		if err != nil {
 			continue
 		}

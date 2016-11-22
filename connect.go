@@ -5,8 +5,10 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -428,6 +430,81 @@ func (this *Connection) version() (v string, err error) { /*{{{*/
 		return "", nil
 	}
 } /*}}}*/
+
+func (this *Connection) auth(user string, password string) error {
+	header := &request_header{
+		magic:    MAGIC_REQ,
+		opcode:   OP_SASL_LISTMETHODS,
+		keylen:   0x00,
+		extlen:   0x00,
+		datatype: TYPE_RAW_BYTES,
+		status:   0x00,
+		bodylen:  0x00000000,
+		opaque:   0x00,
+		cas:      0x00,
+	}
+
+	if err := this.writeHeader(header); err != nil {
+		return err
+	}
+
+	if err := this.flushBufferToServer(); err != nil {
+		return ErrBadConn
+	}
+
+	resp, err := this.readResponse()
+	if err != nil {
+		return err
+	}
+
+	if err := this.checkResponseError(resp.header.status); err != nil {
+		return err
+	}
+
+	if resp.header.bodylen > 0 {
+		respBody := string(resp.bodyByte)
+		fmt.Fprintf(os.Stderr, "methods=%s\n", respBody)
+		if strings.Index(respBody, "PLAIN") == -1 {
+			return ErrNoPlainAuth
+		}
+	}
+
+	key := "PLAIN"
+	val := fmt.Sprintf("\x00%s\x00%s", user, password)
+	header = &request_header{
+		magic:    MAGIC_REQ,
+		opcode:   OP_SASL_AUTH,
+		keylen:   uint16(len(key)),
+		extlen:   0x00,
+		datatype: TYPE_RAW_BYTES,
+		status:   0x00,
+		bodylen:  uint32(len(key) + len(val)),
+		opaque:   0x00,
+		cas:      0x00,
+	}
+
+	if err := this.writeHeader(header); err != nil {
+		return err
+	}
+
+	this.buffered.Write([]byte(key))
+	this.buffered.Write([]byte(val))
+
+	if err := this.flushBufferToServer(); err != nil {
+		return ErrBadConn
+	}
+
+	resp, err = this.readResponse()
+	if err != nil {
+		return err
+	}
+
+	if err := this.checkResponseError(resp.header.status); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 //check server returned status
 func (this *Connection) checkResponseError(status status_t) (err error) { /*{{{*/

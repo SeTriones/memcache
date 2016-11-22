@@ -10,19 +10,22 @@ const (
 type opcode_t uint8
 
 const (
-	OP_GET       opcode_t = 0x00
-	OP_SET       opcode_t = 0x01
-	OP_ADD       opcode_t = 0x02
-	OP_REPLACE   opcode_t = 0x03
-	OP_DELETE    opcode_t = 0x04
-	OP_INCREMENT opcode_t = 0x05
-	OP_DECREMENT opcode_t = 0x06
-	OP_FLUSH     opcode_t = 0x08
-	OP_NOOP      opcode_t = 0x0a
-	OP_VERSION   opcode_t = 0x0b
-	OP_GETK      opcode_t = 0x0c
-	OP_APPEND    opcode_t = 0x0e
-	OP_PREPEND   opcode_t = 0x0f
+	OP_GET              opcode_t = 0x00
+	OP_SET              opcode_t = 0x01
+	OP_ADD              opcode_t = 0x02
+	OP_REPLACE          opcode_t = 0x03
+	OP_DELETE           opcode_t = 0x04
+	OP_INCREMENT        opcode_t = 0x05
+	OP_DECREMENT        opcode_t = 0x06
+	OP_FLUSH            opcode_t = 0x08
+	OP_NOOP             opcode_t = 0x0a
+	OP_VERSION          opcode_t = 0x0b
+	OP_GETK             opcode_t = 0x0c
+	OP_APPEND           opcode_t = 0x0e
+	OP_PREPEND          opcode_t = 0x0f
+	OP_SASL_LISTMETHODS opcode_t = 0x20
+	OP_SASL_AUTH        opcode_t = 0x21
+	OP_SASL_STEP        opcode_t = 0x22
 )
 
 type status_t uint16

@@ -21,16 +21,20 @@ type Server struct {
 	isActive bool
 	pool     *ConnectionPool
 	nodeList []uint32
+	User     string
+	Password string
 }
 
 type Nodes struct {
 	serverNodeMap map[uint32]*Server //hask_key => Server
 	nodeList      []uint32
+	Servers       []*Server
 	nodeCnt       int
 }
 
 func createServerNode(servers []*Server) *Nodes { /*{{{*/
 	nodes := &Nodes{}
+	nodes.Servers = servers
 
 	total_weight := 0
 	for _, v := range servers {
@@ -51,7 +55,7 @@ func createServerNode(servers []*Server) *Nodes { /*{{{*/
 	for _, s := range servers {
 		//create connection pool
 		if s.pool == nil {
-			s.pool = open(s.Address, s.MaxConn, s.InitConn, s.IdleTime)
+			s.pool = open(s.Address, s.User, s.Password, s.MaxConn, s.InitConn, s.IdleTime)
 		}
 
 		//计算实际分配的虚拟节点数
