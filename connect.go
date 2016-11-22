@@ -432,6 +432,10 @@ func (this *Connection) version() (v string, err error) { /*{{{*/
 } /*}}}*/
 
 func (this *Connection) auth(user string, password string) error {
+	if user == "" && password == "" {
+		return nil
+	}
+
 	header := &request_header{
 		magic:    MAGIC_REQ,
 		opcode:   OP_SASL_LISTMETHODS,
