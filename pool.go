@@ -12,6 +12,8 @@ type ConnectionPool struct {
 	maxCnt   int
 	totalCnt int
 	idleTime time.Duration
+	user     string
+	password string
 
 	sync.Mutex
 }
@@ -22,6 +24,8 @@ func open(address string, user string, password string, maxCnt int, initCnt int,
 		address:  address,
 		maxCnt:   maxCnt,
 		idleTime: idelTime,
+		user:     user,
+		password: password,
 	}
 
 	for i := 0; i < initCnt; i++ {
@@ -96,7 +100,13 @@ func (this *ConnectionPool) Put(conn *Connection) {
 func (this *ConnectionPool) Release(conn *Connection) {
 	conn.Close()
 	this.Lock()
-	this.totalCnt--
+	conn, err := connect(this.address)
+	err = conn.auth(this.user, this.password)
+	if err != nil {
+		this.totalCnt = this.totalCnt - 1
+	} else {
+		this.pool <- conn
+	}
 	this.Unlock()
 }
 

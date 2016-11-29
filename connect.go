@@ -14,17 +14,41 @@ import (
 	"time"
 )
 
-type Connection struct {
-	c              net.Conn
-	buffered       bufio.ReadWriter
-	lastActiveTime time.Time
-}
-
 var (
 	dialTimeout  time.Duration
 	writeTimeout time.Duration
 	readTimeout  time.Duration
 )
+
+type ConnReaderWriter struct {
+	conn net.Conn
+}
+
+func (c *ConnReaderWriter) Read(b []byte) (n int, err error) {
+	if readTimeout > 0 {
+		c.conn.SetReadDeadline(time.Now().Add(readTimeout))
+	}
+	defer c.conn.SetReadDeadline(time.Time{})
+	return c.conn.Read(b)
+}
+
+func (c *ConnReaderWriter) Write(b []byte) (n int, err error) {
+	if writeTimeout > 0 {
+		c.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+	}
+	defer c.conn.SetWriteDeadline(time.Time{})
+	return c.conn.Write(b)
+}
+
+func (c *ConnReaderWriter) Close() error {
+	return c.conn.Close()
+}
+
+type Connection struct {
+	c              *ConnReaderWriter
+	buffered       bufio.ReadWriter
+	lastActiveTime time.Time
+}
 
 func connect(address string) (conn *Connection, err error) { /*{{{*/
 	var network string
@@ -47,11 +71,14 @@ func connect(address string) (conn *Connection, err error) { /*{{{*/
 } /*}}}*/
 
 func newConnection(c net.Conn) *Connection { /*{{{*/
+	myConn := &ConnReaderWriter{
+		conn: c,
+	}
 	return &Connection{
-		c: c,
+		c: myConn,
 		buffered: *bufio.NewReadWriter(
-			bufio.NewReader(c),
-			bufio.NewWriter(c),
+			bufio.NewReader(myConn),
+			bufio.NewWriter(myConn),
 		),
 		lastActiveTime: time.Now(),
 	}
@@ -60,12 +87,9 @@ func newConnection(c net.Conn) *Connection { /*{{{*/
 func (this *Connection) readResponse() (*response, error) { /*{{{*/
 	b := make([]byte, 24)
 
-	if readTimeout > 0 {
-		this.c.SetReadDeadline(time.Now().Add(readTimeout))
-	}
-
 	if _, err := this.buffered.Read(b); err != nil {
 		//if err == io.EOF {
+		fmt.Fprintf(os.Stderr, "readResponse err=%v\n", err)
 		return nil, ErrBadConn
 		//} else {
 		//	return nil, err
@@ -81,21 +105,18 @@ func (this *Connection) readResponse() (*response, error) { /*{{{*/
 	res := &response{header: response_header}
 
 	if response_header.bodylen > 0 {
-		if readTimeout > 0 {
-			this.c.SetReadDeadline(time.Now().Add(readTimeout))
-		}
 
 		res.bodyByte = make([]byte, response_header.bodylen)
-		io.ReadFull(this.buffered, res.bodyByte)
+		_, err := io.ReadFull(this.buffered, res.bodyByte)
+		if err != nil {
+			return res, err
+		}
 	}
 
 	return res, nil
 } /*}}}*/
 
 func (this *Connection) flushBufferToServer() error { /*{{{*/
-	if writeTimeout > 0 {
-		this.c.SetWriteDeadline(time.Now().Add(writeTimeout))
-	}
 	return this.buffered.Flush()
 } /*}}}*/
 
@@ -118,6 +139,7 @@ func (this *Connection) get(key string, format ...interface{}) (res *response, e
 	this.buffered.WriteString(key)
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return nil, ErrBadConn
 	}
 
@@ -167,6 +189,7 @@ func (this *Connection) delete(key string, cas ...uint64) (res bool, err error) 
 	this.buffered.Write([]byte(key))
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return false, ErrBadConn
 	}
 
@@ -218,6 +241,7 @@ func (this *Connection) numberic(opcode opcode_t, key string, args ...interface{
 	this.buffered.Write([]byte(key))
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return false, ErrBadConn
 	}
 
@@ -264,6 +288,7 @@ func (this *Connection) store(opcode opcode_t, key string, value interface{}, ti
 	this.buffered.Write(val)
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return false, ErrBadConn
 	}
 
@@ -303,6 +328,7 @@ func (this *Connection) appends(opcode opcode_t, key string, value string, cas .
 	this.buffered.Write([]byte(key + value))
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return false, ErrBadConn
 	}
 
@@ -346,6 +372,7 @@ func (this *Connection) flush(delay ...uint32) (res bool, err error) { /*{{{*/
 	this.buffered.Write(extra_byte)
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return false, ErrBadConn
 	}
 
@@ -379,6 +406,7 @@ func (this *Connection) noop() (res bool, err error) { /*{{{*/
 	}
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return false, ErrBadConn
 	}
 
@@ -412,6 +440,7 @@ func (this *Connection) version() (v string, err error) { /*{{{*/
 	}
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return "", ErrBadConn
 	}
 
@@ -453,6 +482,7 @@ func (this *Connection) auth(user string, password string) error {
 	}
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return ErrBadConn
 	}
 
@@ -495,6 +525,7 @@ func (this *Connection) auth(user string, password string) error {
 	this.buffered.Write([]byte(val))
 
 	if err := this.flushBufferToServer(); err != nil {
+		fmt.Fprintf(os.Stderr, "flushBufferToServer err=%v\n", err)
 		return ErrBadConn
 	}
 
