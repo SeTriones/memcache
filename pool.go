@@ -3,6 +3,8 @@ package memcache
 import (
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 //连接池
@@ -31,10 +33,12 @@ func open(address string, user string, password string, maxCnt int, initCnt int,
 	for i := 0; i < initCnt; i++ {
 		conn, err := connect(address)
 		if err != nil {
+			log.Errorf("conn connect fail")
 			continue
 		}
 		err = conn.auth(user, password)
 		if err != nil {
+			log.Errorf("conn auth fail")
 			continue
 		}
 		pool.totalCnt++
@@ -83,6 +87,11 @@ func (this *ConnectionPool) get() (conn *Connection, err error) {
 		this.Unlock()
 		return nil, err
 	}
+	err = conn.auth(this.user, this.password)
+	if err != nil {
+		this.Unlock()
+		return nil, err
+	}
 	this.totalCnt++
 	this.Unlock()
 
@@ -101,6 +110,10 @@ func (this *ConnectionPool) Release(conn *Connection) {
 	conn.Close()
 	this.Lock()
 	conn, err := connect(this.address)
+	if err != nil {
+		this.totalCnt = this.totalCnt - 1
+		return
+	}
 	err = conn.auth(this.user, this.password)
 	if err != nil {
 		this.totalCnt = this.totalCnt - 1
