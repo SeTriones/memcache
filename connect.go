@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 var (
@@ -51,6 +53,7 @@ type Connection struct {
 }
 
 func connect(address string) (conn *Connection, err error) { /*{{{*/
+	log.Infof("new conn")
 	var network string
 	if strings.Contains(address, "/") {
 		network = "unix"
@@ -461,6 +464,7 @@ func (this *Connection) version() (v string, err error) { /*{{{*/
 } /*}}}*/
 
 func (this *Connection) auth(user string, password string) error {
+	log.Infof("auth conn")
 	if user == "" && password == "" {
 		return nil
 	}
