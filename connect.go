@@ -567,6 +567,7 @@ func (this *Connection) checkResponseError(status status_t) (err error) { /*{{{*
 	case STATUS_ENOMEM:
 		return ErrMem
 	default:
+		fmt.Fprintf(os.Stderr, "unknown status=%d\n", status)
 		return ErrUnkown
 	}
 } /*}}}*/
