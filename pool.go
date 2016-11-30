@@ -109,6 +109,7 @@ func (this *ConnectionPool) Put(conn *Connection) {
 func (this *ConnectionPool) Release(conn *Connection) {
 	conn.Close()
 	this.Lock()
+	defer this.Unlock()
 	conn, err := connect(this.address)
 	if err != nil {
 		this.totalCnt = this.totalCnt - 1
@@ -120,7 +121,6 @@ func (this *ConnectionPool) Release(conn *Connection) {
 	} else {
 		this.pool <- conn
 	}
-	this.Unlock()
 }
 
 //clear pool
