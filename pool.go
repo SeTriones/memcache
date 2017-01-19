@@ -110,17 +110,7 @@ func (this *ConnectionPool) Release(conn *Connection) {
 	conn.Close()
 	this.Lock()
 	defer this.Unlock()
-	conn, err := connect(this.address)
-	if err != nil {
-		this.totalCnt = this.totalCnt - 1
-		return
-	}
-	err = conn.auth(this.user, this.password)
-	if err != nil {
-		this.totalCnt = this.totalCnt - 1
-	} else {
-		this.pool <- conn
-	}
+	this.totalCnt = this.totalCnt - 1
 }
 
 //clear pool
