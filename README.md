@@ -110,8 +110,10 @@ github.com/pangudashu/memcache结果：
          * Address  string          //host:port
          * Weight   int             //权重        
          * InitConn int:            //初始化连接数 < MaxCnt
-         * MaxConn  int:            //最大连接数
+         * MaxConn	int:            //最大连接数
          * IdleTime time.Duration:  //空闲连接有效期
+		 * User		string:			//memcached用户名
+		 * Password	string:			//memcached访问密码
          */
 
         s1 := &memcache.Server{Address: "127.0.0.1:12000", Weight: 50}
@@ -331,3 +333,4 @@ github.com/pangudashu/memcache结果：
 * ErrInvalFormat : Invalid format struct
 * ErrNoFormat    : Format struct empty
 * ErrUnkown      : Unkown error
+* ErrNoPlainAuth : Memcached does not support plain auth
