@@ -92,7 +92,7 @@ github.com/pangudashu/memcache结果：
 ### 使用
 ##### 下载
 
-    go get github.com/pangudashu/memcache
+    go get github.com/SeTriones/memcache（如果不需要auth，也可以使用pangudashu原版：go get github.com/pangudashu/memcache）
 
 ##### 导入
 
@@ -100,7 +100,7 @@ github.com/pangudashu/memcache结果：
 
     import(
         "fmt"
-        "github.com/pangudashu/memcache"
+        "github.com/SeTriones/memcache"
     )
 
     func main(){
